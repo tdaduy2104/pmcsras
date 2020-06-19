@@ -3,7 +3,7 @@ import sqlvalidator
 import telegram
 from flask import Flask, request
 
-bot_token = "1205202424:AAEHf6W0Akev22-IS6fliEEFIMTgZiVujm8"
+bot_token = "1205202424:AAFCLsQFwEjSsaeCuEBvNXZ3EmGMJEzgR_M"
 bot_user_name = "pmcsqlbot"
 URL = "https://pmctelebot.azurewebsites.net/"
 
