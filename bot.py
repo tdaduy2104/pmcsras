@@ -1,5 +1,3 @@
-import pyodbc
-import sqlvalidator
 import telegram
 from flask import Flask, request
 
