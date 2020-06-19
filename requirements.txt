@@ -12,7 +12,6 @@ itsdangerous==1.1.0
 Jinja2==2.11.2
 MarkupSafe==1.1.1
 pycparser==2.20
-pyodbc===4.0.30
 pyTelegramBotAPI==3.7.1
 python-telegram-bot==12.7
 requests==2.23.0
