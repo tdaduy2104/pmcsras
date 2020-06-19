@@ -51,7 +51,7 @@ def respond():
                   ""
             bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
             
-                elif "/settime:" in text:
+        elif "/settime:" in text:
             cmd = str(text.split(':')[-1])
             # Scheduler with day, time
             if ';' in cmd:
