@@ -3,36 +3,13 @@ from flask import Flask, request
 
 bot_token = "1205202424:AAFCLsQFwEjSsaeCuEBvNXZ3EmGMJEzgR_M"
 bot_user_name = "pmcsqlbot"
-URL = "https://pmctelebot.azurewebsites.net/"
+URL = "https://pmcsras.herokuapp.com/"
 
 global bot
 global TOKEN
 TOKEN = bot_token
 bot = telegram.Bot(token=TOKEN)
 
-
-def run_query(query):
-
-    authentication = 'ActiveDirectoryPassword'
-    server = 'pharmacity.database.windows.net'
-    database = 'PMC_DW'
-    username = 'powerbishare1@pharmacity.vn'
-    password = 'Pmc@1234'
-    driver = '{ODBC Driver 17 for SQL Server}'
-    cnxn = pyodbc.connect('DRIVER=' + driver +
-                          ';SERVER=' + server +
-                          ';DATABASE=' + database +
-                          ';UID=' + username +
-                          ';PWD=' + password +
-                          ';AUTHENTICATION=' + authentication
-                          )
-
-    sql_query = query
-    cursor = cnxn.cursor()
-    cursor.execute(sql_query)
-    cols = [cursor[0] for cursor in cursor.description]
-    rows = [cursor[0] for cursor in cursor.fetchall()]
-    return rows, cols
 
 def load_file(filename):
     with open(filename, "r") as file:
