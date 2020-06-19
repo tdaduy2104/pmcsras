@@ -3,7 +3,7 @@ from flask import Flask, request
 
 bot_token = "1205202424:AAFCLsQFwEjSsaeCuEBvNXZ3EmGMJEzgR_M"
 bot_user_name = "pmcsqlbot"
-URL = "https://pmcsras.herokuapp.com"
+URL = "https://pmcsras.herokuapp.com/"
 
 global bot
 global TOKEN
