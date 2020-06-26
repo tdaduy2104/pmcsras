@@ -1,195 +1,58 @@
-import telegram
-from flask import Flask, request
+import logging
+import random
 
-bot_token = "1205202424:AAFCLsQFwEjSsaeCuEBvNXZ3EmGMJEzgR_M"
-bot_user_name = "pmcsqlbot"
-URL = "https://pmcsras.herokuapp.com/"
+from telegram.ext import Updater, CommandHandler
 
-global bot
-global TOKEN
-TOKEN = bot_token
-bot = telegram.Bot(token=TOKEN)
+# Enabling logging
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger()
+
+# Getting mode, so we could define run function for local and Heroku setup
+TOKEN = "844716509:AAHypcTWAuLf2raqKl7xuiCYqc698gKrmWs"
+
+#local
+# def run(updater):
+#     updater.start_polling()
+
+#deploy
+def run(updater):
+    updater.start_webhook(listen="0.0.0.0",
+                          url_path=TOKEN)
+    updater.bot.set_webhook("https://pmcsras.herokuapp.com/{}".format(TOKEN))
 
 
-def load_file(filename):
-    with open(filename, "r") as file:
-        lst = file.read().split('\n')
-    return lst
+def start_handler(bot, update):
+    # Creating a handler-function for /start command
+    logger.info("User {} started bot".format(update.effective_user["id"]))
+    update.message.reply_text("Hello from Python!\nPress /random to get random number")
 
-app = Flask(__name__)
+def random_handler(bot, update):
+    # Creating a handler-function for /random command
+    number = random.randint(0, 10)
+    logger.info("User {} randomed number {}".format(update.effective_user["id"], number))
+    update.message.reply_text("Random number: {}".format(number))
 
-@app.route('/{}'.format(TOKEN), methods=['POST'])
-def respond():
-    update = telegram.Update.de_json(request.get_json(force=True), bot)
-    chat_id = update.message.chat.id
-    msg_id = update.message.message_id
-    text = update.message.text.encode('utf-8').decode()
-    access_list = ['-431936180', '-418484865', '1157659215']
-    print("got text message :", text)
+def callback_alarm(bot, job):
+    bot.send_message(chat_id=job.context, text='Alarm')
 
-    if str(chat_id) in access_list:
-        if text == "/start":
-            msg = "Welcome to SQL Results Automation Subscribe system!!! Enter '/help' for all the command"
-            bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
+def callback_timer(bot, update, job_queue):
+    bot.send_message(chat_id=update.message.chat_id,
+                      text='Starting!')
+    job_queue.run_repeating(callback_alarm, 5, context=update.message.chat_id)
 
-        elif text == "/sendnudes":
-            msg = 'First Header  | Second Header' \
-                  '------------- | -------------' \
-                  'Content Cell  | Content Cell'
-            bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id, parse_mode=telegram.ParseMode.MARKDOWN_V2)
-
-        elif text == "/help":
-            msg = "----All the command----\n" \
-                  "/runall - run all sql query\n" \
-                  "/run:{name} - run one sql query\n" \
-                  "/showsql - list all sql\n" \
-                  "/addsql:{name};{query} - add a new sql query\n" \
-                  "/delsql:{name} - delete an existing sql\n" \
-                  "/upsql:{name};{query} - update an existing sql\n" \
-                  "/settime:{time} - run all sql at some time every day\n" \
-                  "/settime:{dayinweek};{time} - run all sql at some time every specific day\n" \
-                  ""
-            bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-            
-        elif "/settime:" in text:
-            cmd = str(text.split(':')[-1])
-            # Scheduler with day, time
-            if ';' in cmd:
-                time = cmd.split(';')[-1]
-                day = cmd.split(';')[0]
-            # Scheduler with time
-            else:
-                time = cmd
-
-        elif text == "/runall":
-            msg_lst = []
-            lst_sql = load_file("sqlquery.txt")
-            try:
-                for id, line in enumerate(lst_sql):
-                    query = str(line.split(';')[-1])
-                    rows, cols = run_query(query)
-                    for i in range(len(rows)):
-                        tmp = str(cols[i]) + ': ' + str(rows[i])
-                        msg_lst.append(tmp)
-                msg = '\n'.join(str(m) for m in msg_lst)
-                bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-            except:
-                msg = "@ERRPR: Oops, something went wrong, please try again!"
-                bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-
-        elif "/run:" in text:
-            msg_lst = []
-            query_name = str(text.split(':')[-1])
-            try:
-                lst_sql = load_file("sqlquery.txt")
-                for id, line in enumerate(lst_sql):
-                    name = line.split(';')[0]
-                    query = line.split(';')[-1]
-                    if query_name == name:
-                        rows, cols = run_query(query)
-                        for i in range(len(rows)):
-                            tmp = str(cols[i]) + ': ' + str(rows[i])
-                            msg_lst.append(tmp)
-                        msg = '\n'.join(str(m) for m in msg_lst)
-                        bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-                    else:
-                        msg = 'Query not found, please check whether you input a correct name!!!'
-                        bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-            except:
-                msg = '@ERRPR: Oops, something went wrong, please try again!'
-                bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-
-        elif "/addsql:" in text:
-            text = text.replace('\n', '')
-            query = text.split(':')[-1]
-            lst_sql = load_file("sqlquery.txt")
-            if query in lst_sql:
-                msg = "@ERROR: This query already exists! Try add another one."
-                bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-            else:
-                sql_query = query.split(';')[-1]
-                if sqlvalidator.parse(sql_query).is_valid():
-                    lst_sql.append(sql_query)
-                    with open("sqlquery.txt", "w", encoding='utf8') as file:
-                        file.write("\n".join(str(line) for line in lst_sql))
-                    msg = f"SQL Query '{query.split(';')[0]}' added successfully!"
-                    bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-                else:
-                    msg = "@ERROR: SQL query syntax error, please check whether you input the correct query!"
-                    bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-
-        elif text == "/showsql":
-            try:
-                lst_sql = load_file("sqlquery.txt")
-                for id, line in enumerate(lst_sql):
-                    lst_sql[id] = f'{id + 1}. ' + line
-                msg = '\n'.join(str(line) for line in lst_sql)
-                bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-            except:
-                msg = '@ERRPR: Oops, something went wrong, please try again!'
-                bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-
-        elif "/delsql:" in text:
-            ifdel = False
-            lst_sql = load_file("sqlquery.txt")
-            name = str(text.split(':')[-1])
-            for index, sql in enumerate(lst_sql):
-                sql_name = str(sql.split(';')[0])
-
-                if name == sql_name:
-                    del lst_sql[index]
-                    with open("sqlquery.txt", "w", encoding='utf8') as file:
-                        file.write("\n".join(str(line) for line in lst_sql))
-                    msg = f"{name} have been removed!"
-                    bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-                    ifdel = True
-                    break
-
-            if not ifdel:
-                msg = f"{name} not exist, please make sure you type the correct query name!"
-                bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-
-        elif "/upsql:" in text:
-            ifdel = False
-            lst_sql = load_file("sqlquery.txt")
-            name = str(text.split(':')[-1])
-            for index, sql in enumerate(lst_sql):
-                sql_name = str(sql.split(';')[0])
-                bot.sendMessage(chat_id=chat_id, text=sql_name, reply_to_message_id=msg_id)
-
-                if name == sql_name:
-                    lst_sql[index] = text
-                    with open("sqlquery.txt", "w", encoding='utf8') as file:
-                        file.write("\n".join(str(line) for line in lst_sql))
-                    msg = f"{name} have been updated!"
-                    bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-                    ifdel = True
-                    break
-
-            if not ifdel:
-                msg = f"{name} not exist, please make sure you type the correct query name!"
-                bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-        
-        else:
-            msg = "Command not found! Show all command with /help."
-            bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-    else:
-        msg = "Hạ đẳng! Bạn không có cửa nói chuyện với tôi!"
-        bot.sendMessage(chat_id=chat_id, text=msg, reply_to_message_id=msg_id)
-
-    return 'ok'
-
-@app.route('/set_webhook', methods=['GET', 'POST'])
-def set_webhook():
-    s = bot.setWebhook('{URL}{HOOK}'.format(URL=URL, HOOK=TOKEN))
-    if s:
-        return "webhook setup ok"
-    else:
-        return "webhook setup failed"
-
-@app.route('/')
-def index():
-    return '.'
+def stop_timer(bot, update, job_queue):
+    bot.send_message(chat_id=update.message.chat_id,
+                      text='Stoped!')
+    job_queue.stop()
 
 if __name__ == '__main__':
-    app.run(threaded=True)
+    logger.info("Starting bot")
+    updater = Updater(TOKEN)
+
+    updater.dispatcher.add_handler(CommandHandler('start', start_handler))
+    updater.dispatcher.add_handler(CommandHandler('random', random_handler))
+    updater.dispatcher.add_handler(CommandHandler('trigger', callback_timer, pass_job_queue=True))
+    updater.dispatcher.add_handler(CommandHandler('stop', stop_timer, pass_job_queue=True))
+
+    run(updater)
